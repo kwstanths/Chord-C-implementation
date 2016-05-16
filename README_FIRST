@@ -1,4 +1,4 @@
-AUTHOR: Constantinos Kazatzhs kon.kazatzis@gmail.com
+AUTHOR: Konstantinos Kazatzhs kon.kazatzis@gmail.com
 
 PROJECT: This is an emulator for a DHT implementing the chord protocol. This project is implemented in C++.
 	The basic operations are insert(file,value), query(file), delete(file), join(node), depart(node). In this
