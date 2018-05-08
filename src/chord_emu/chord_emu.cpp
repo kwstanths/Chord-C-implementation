@@ -20,10 +20,20 @@
 
 #include "ChordNode.hpp"
 
+/**
+	Function to compare twn chord nodes with their id's for sorting purposes
+	@param first The first node
+	@param second The second node
+	@return True if first has lower id than second
+*/
 bool compare(const ChordNode& first, const ChordNode& second){
 	return first.get_id() < second.get_id();
 }
 
+/**
+	Pretty print the list of chord nodes for debugging purposes
+	@param nodes The list of chord nodes
+*/
 void print_list(std::list<ChordNode> nodes){
 
 	std::list<ChordNode>::iterator iterator;
@@ -38,9 +48,65 @@ void print_list(std::list<ChordNode> nodes){
 	}
 };
 
-void set_id_and_hostnames(std::list<ChordNode>* nodes);
-int check_node_existence(std::list<ChordNode>* nodes, int nodehash);
-ChordNode return_node(std::list<ChordNode>* nodes, int nodehash);
+/**
+	A function that sets all the id's of the nodes(successor's and predecessors') 
+	and the hostnames (successor's and predecessors's as well). Usually called after a sorting.
+	@param nodes The chord nodes list
+*/
+void set_id_and_hostnames(std::list<ChordNode>* nodes){
+
+	std::list<ChordNode>::iterator iterator, prev_node, next_node;
+	for(iterator=nodes->begin(); iterator != nodes->end(); ++iterator){
+		iterator++; next_node = iterator;
+		iterator--; iterator--; prev_node=iterator++;
+		if ((*iterator).get_id() == nodes->front().get_id()){
+			(*iterator).set_successor((*next_node).get_id());
+			(*iterator).set_predecessor(nodes->back().get_id());
+
+			(*iterator).set_successor_hostname((*next_node).get_hostname());
+			(*iterator).set_predecessor_hostname(nodes->back().get_hostname());
+		}else if ((*iterator).get_id() == nodes->back().get_id()){
+			(*iterator).set_successor(nodes->front().get_id());
+			(*iterator).set_predecessor((*prev_node).get_id());
+
+			(*iterator).set_successor_hostname(nodes->back().get_hostname());
+			(*iterator).set_predecessor_hostname((*prev_node).get_hostname());
+		}else{
+			(*iterator).set_successor((*next_node).get_id());
+			(*iterator).set_predecessor((*prev_node).get_id());
+
+			(*iterator).set_successor_hostname((*next_node).get_hostname());
+			(*iterator).set_predecessor_hostname((*prev_node).get_hostname());
+		}
+	}
+}
+
+/**
+	Check if a node already exists inside inside the node list
+	@param nodes The nodes list
+	@param nodehash The nodehash of a node
+	@param 1 = exists, 0 = does not exist 
+*/
+int check_node_existence(std::list<ChordNode>* nodes, int nodehash){
+		for(std::list<ChordNode>::iterator iterator=nodes->begin(); iterator != nodes->end(); ++iterator){
+		if ((*iterator).get_id() == nodehash) return 1;
+	}
+	return 0;
+}
+
+/**
+	Get the chord node object with a given node hash
+	@param nodes The nodes list
+	@param nodehash The nodehash of a node
+	@return A chord node object
+*/
+ChordNode return_node(std::list<ChordNode>* nodes, int nodehash){
+		for(std::list<ChordNode>::iterator iterator=nodes->begin(); iterator != nodes->end(); ++iterator){
+		if ((*iterator).get_id() == nodehash) return *iterator;
+	}
+
+}
+
 
 int main(int argc, char** argv){
 
@@ -54,7 +120,7 @@ int main(int argc, char** argv){
 	number_of_nodes = std::atoi(argv[1]);
 	M = std::atoi(argv[2]);
 
-	ring_size = std::pow(2,M);
+	ring_size = std::pow(2, M);
 	std::cout << "Nodes: " << number_of_nodes << std::endl;
 	std::cout << "Ring size: " << ring_size << std::endl;
 
@@ -92,48 +158,48 @@ int main(int argc, char** argv){
 		threads.push_back(std::thread(&ChordNode::listen_incoming_connections, iterator));
 	}
 
-	char buffer[50];
+	std::string line;
 	int nodeid, nodehash;
 	while(1){
 		/*
 		* Iterate forever accepting joins and departs
 		*/
-		std::cin >> buffer;
-		if (strcmp(buffer,"JOIN")==0) {
+		std::cout << "Commands[JOIN, DEPART] > ";
+		std::cin >> line;
+		if (line == "JOIN") {
 			std::cout << "New node ID: " ;
 			std::cin >> nodeid;
-			nodehash =compute_sha1_hash(nodeid,ring_size);
-			std::cout << "About to insert the node: " << nodeid << " with hash: " << nodehash << std::endl;
+			nodehash = compute_sha1_hash(nodeid, ring_size);
+			std::cout << "Inserting node: " << nodeid << " with hash: " << nodehash << std::endl;
 
-			if (check_node_existence(&nodes,nodehash)) std::cout << "Node already exists..." << std::endl;
+			if (check_node_existence(&nodes, nodehash)) std::cout << "Node already exists..." << std::endl;
 			else {
-				ChordNode newNode = ChordNode(nodehash,ring_size);
+				ChordNode newNode = ChordNode(nodehash, ring_size);
 				newNode.set_hostname("localhost");
 				nodes.push_back(newNode);
 				nodes.sort(compare);
 				set_id_and_hostnames(&nodes);
 				threads.push_back(std::thread(&ChordNode::listen_incoming_connections, return_node(&nodes,nodehash)));
 				print_list(nodes);
+				/* set_id_and_hostnames changes the nodes, the local variable newNode is the new node anynmore */
 				newNode = return_node(&nodes, nodehash);
 				std::string message = "JOIN TRANSFER," + std::to_string(newNode.get_id()) + "," + newNode.get_hostname();
-				forward_message(buffer,newNode.get_successor_hostname(),PORT_BASE+newNode.get_successor());
+				forward_message(message, newNode.get_successor_hostname(), PORT_BASE + newNode.get_successor());
 				usleep(2000000);
-
 			}
-		}else if (strcmp(buffer,"DEPART")==0){
-			std::cout << "Node ID: " ;
+		} else if (line == "DEPART"){
+			std::cout << "Node port: " ;
 			std::cin >> nodeid;
 			nodehash = nodeid - PORT_BASE;
-			std::cout <<"About to remove the node with hash: " << nodehash << std::endl;
+			std::cout << "Removing node with hash: " << nodehash << std::endl;
 
-			if (check_node_existence(&nodes,nodehash)==0) std::cout << "Node doesn't exist..." << std::endl;
+			if (check_node_existence(&nodes, nodehash) == 0) std::cout << "Node doesn't exist..." << std::endl;
 			else {
-				ChordNode node_to_remove = return_node(&nodes,nodehash);
-				printf("Removing node : %d\n",node_to_remove.get_id());
-				sprintf(buffer,"DEPART_TRANSFER");
-				forward_message(buffer,node_to_remove.get_hostname(),PORT_BASE+node_to_remove.get_id());
-
+				ChordNode node_to_remove = return_node(&nodes, nodehash);
+				std::string message = "DEPART TRANSFER";
+				forward_message(message, node_to_remove.get_hostname(), PORT_BASE + node_to_remove.get_id());
 				usleep(2000000);
+
 				nodes.remove(node_to_remove);
 				set_id_and_hostnames(&nodes);
 				print_list(nodes);
@@ -146,47 +212,3 @@ int main(int argc, char** argv){
 		threads.at(i).join();
 }
 
-int check_node_existence(std::list<ChordNode>* nodes, int nodehash){
-	for(std::list<ChordNode>::iterator iterator=nodes->begin(); iterator != nodes->end(); ++iterator){
-		if ((*iterator).get_id() == nodehash) return 1;
-	}
-	return 0;
-}
-
-ChordNode return_node(std::list<ChordNode>* nodes, int nodehash){
-	for(std::list<ChordNode>::iterator iterator=nodes->begin(); iterator != nodes->end(); ++iterator){
-		if ((*iterator).get_id() == nodehash) return *iterator;
-	}
-
-}
-
-void set_id_and_hostnames(std::list<ChordNode>* nodes){
-	/*
-	* A function that sets all the id's of the nodes(successor's and predecessors') and the hostnames
-	*	(successor's and predecessors's as well). Usually called after a sorting.
-	*/
-	std::list<ChordNode>::iterator iterator, prev_node, next_node;
-	for(iterator=nodes->begin(); iterator != nodes->end(); ++iterator){
-		iterator++; next_node = iterator;
-		iterator--; iterator--; prev_node=iterator++;
-		if ((*iterator).get_id() == nodes->front().get_id()){
-			(*iterator).set_successor((*next_node).get_id());
-			(*iterator).set_predecessor(nodes->back().get_id());
-
-			(*iterator).set_successor_hostname((*next_node).get_hostname());
-			(*iterator).set_predecessor_hostname(nodes->back().get_hostname());
-		}else if ((*iterator).get_id() == nodes->back().get_id()){
-			(*iterator).set_successor(nodes->front().get_id());
-			(*iterator).set_predecessor((*prev_node).get_id());
-
-			(*iterator).set_successor_hostname(nodes->back().get_hostname());
-			(*iterator).set_predecessor_hostname((*prev_node).get_hostname());
-		}else{
-			(*iterator).set_successor((*next_node).get_id());
-			(*iterator).set_predecessor((*prev_node).get_id());
-
-			(*iterator).set_successor_hostname((*next_node).get_hostname());
-			(*iterator).set_predecessor_hostname((*prev_node).get_hostname());
-		}
-	}
-}

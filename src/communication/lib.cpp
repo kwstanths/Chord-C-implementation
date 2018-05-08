@@ -165,17 +165,6 @@ Command parse_the_command(char * initial_buffer){
 	return answer;
 };
 
-int search_in_a_vector_of_files(std::vector<std::pair<int,int>> files,int key){
-	/*
-	* Returns the position of a file in a vector of files or -1 if it doesn't exist
-	*/
-	for(int i=0; i<files.size(); i++){
-		if (files.at(i).first == key) return i;
-
-	}
-	return -1;
-};
-
 void forward_message(std::string message, std::string hostname, int port){
 	/*
 	* Client procedure which sends the message message into hostname:port

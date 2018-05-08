@@ -4,10 +4,10 @@
 #include <string>
 #include <vector>
 
+/*
+	Holds the necessary info for a request
+*/
 struct Command {
-	/*
-	* This struct is used by the nodes in order to hold the information of a request coming in a port
-	*/
 	int type;
 	std::pair<std::string, int> key_and_value;
 	int initial_node;
@@ -25,8 +25,6 @@ int compute_sha1_hash(int not_hashed, int ring_size);
 int compute_sha1_hash(const char * not_hashed,int ring_size);
 
 Command parse_the_command(char * buffer);
-
-int search_in_a_vector_of_files(std::vector<std::pair<int,int>> files,int key);
 
 void forward_message(std::string message, std::string hostname, int port);
 

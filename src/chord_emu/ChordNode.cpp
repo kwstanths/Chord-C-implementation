@@ -22,81 +22,82 @@
 
 
 int ChordNode::insert(Command command){
-    /*
-     * This is the insert opeartion. Input is a command struct. First if case is to check if this file is
-     * between the first and the last node. Second if case is the typical case.
-     */
+
+    /* Calclulate hash value of the data to be inserted */
     int hash_value = compute_sha1_hash(command.key_and_value.first.c_str(), ring_size);
-    int position;
 #ifdef DEBUG
-    cout << "Hash value! :" << hash_value << endl;
+    cout << "Hash value :" << hash_value << endl;
 #endif
-    /*
-     * Return 1 if you did the insertion, or 0 if you didn't
-     */
-    if (id < predecessor && ((hash_value > id && hash_value > predecessor)||hash_value < id) ){
+    
+    int position;
+    if (id < predecessor && ((hash_value > id && hash_value > predecessor) || hash_value < id)){
+        /* Case: File is betwen the first and the last node od the ring */
+
         position = search_in_a_vector_of_files(files, hash_value);
         if(position == -1 ){
             files.push_back(std::make_pair(hash_value, command.key_and_value.second));
-        }else{
+        } else {
+            /* If file exists, update its value */
             files.at(position).second = command.key_and_value.second;
         }
         return 1;
-    }else if (hash_value < id && hash_value > predecessor) {
+
+    } else if (hash_value < id && hash_value > predecessor) {
+        /* Case: Typical case */
         position = search_in_a_vector_of_files(files, hash_value);
-        if(position == -1 ){
+        if(position == -1 ) {
             files.push_back(std::make_pair(hash_value, command.key_and_value.second));
-        }else{
+        } else {
+            /* If file exists, update its value */
             files.at(position).second = command.key_and_value.second;
         }
         return 1;
-    }else return 0;
 
+    } else return 0;
 
-};
+}
 
 int ChordNode::query(Command command){
-    /*
-     * This is the query opeartion. Input is a command struct. First if case is to check if this file is
-     * between the first and the last node. Second if case is the typical case.
-     */
+
     int hash_value = compute_sha1_hash(command.key_and_value.first.c_str(), ring_size);
+#ifdef DEBUG
+    cout << "Hash value :" << hash_value << endl;
+#endif
+
     int position;
-
-    /*
-     * Return 1 if you found the key, or 0 if you didn't
-     */
-
     if (id < predecessor && ((hash_value > id && hash_value > predecessor) || hash_value < id) ){
+        /* Case: File is betwen the first and the last node od the ring */
+        
         position = search_in_a_vector_of_files(files, hash_value);
-        if(position == -1 ){
+        if(position == -1 ) {
             return 0;
-        }else{
+        } else {
             return files.at(position).second;
         }
-    }else if (hash_value < id && hash_value > predecessor) {
+    } else if (hash_value < id && hash_value > predecessor) {
+        /* Typical case */
+
         position = search_in_a_vector_of_files(files,hash_value);
         if(position == -1 ){
             return 0;
         }else{
             return files.at(position).second;
         }
-    }else return 0;
+    } else return 0;
+
 }
 
 int ChordNode::delete_file(Command command){
-    /*
-     * This is the delete opeartion. Input is a command struct. First if case is to check if this file is
-     * between the first and the last node. Second if case is the typical case.
-     */
+    
     int hash_value = compute_sha1_hash(command.key_and_value.first.c_str(), ring_size);
+    #ifdef DEBUG
+    cout << "Hash value :" << hash_value << endl;
+    #endif
+
     int position;
-
-    /*
-     * Return 1 if you deleted the key, or 0 if you didn't
-     */
-
     if (id < predecessor && ((hash_value > id && hash_value > predecessor) || hash_value < id) ){
+        /* Case: File is betwen the first and the last node od the ring */
+        
         position = search_in_a_vector_of_files(files, hash_value);
         if(position == -1 ){
             return 0;
@@ -105,6 +106,8 @@ int ChordNode::delete_file(Command command){
             return 1;
         }
     }else if (hash_value < id && hash_value > predecessor) {
+        /* Typical case */
+
         position = search_in_a_vector_of_files(files, hash_value);
         if(position == -1 ){
             return 0;
@@ -112,18 +115,26 @@ int ChordNode::delete_file(Command command){
             files.erase(files.begin() + position);
             return 1;
         }
-    }else return 0;
+
+    } else return 0;
 }
 
-/*
- * These two function are of great help when i need to insert or delete a file when i only know its hash
- */
+int ChordNode::search_in_a_vector_of_files(std::vector<std::pair<int,int>> files,int key){
+
+	for(int i=0; i<files.size(); i++){
+		if (files.at(i).first == key) return i;
+
+	}
+	return -1;
+};
+
 int ChordNode::delete_file_from_hash(int hash_value){
     int position;
 
-    position = search_in_a_vector_of_files(files,hash_value);
+    position = search_in_a_vector_of_files(files, hash_value);
     if(position == -1 ){
         printf("Internal error\n");
+        return -1;
     }else{
         files.erase(files.begin() + position);
         return 1;
@@ -133,12 +144,13 @@ int ChordNode::delete_file_from_hash(int hash_value){
 int ChordNode::insert_file_from_hash(int hash_value, int file_value){
     int position;
 
-    position = search_in_a_vector_of_files(files,hash_value);
+    position = search_in_a_vector_of_files(files, hash_value);
     if(position == -1 ){
-        files.push_back(std::make_pair(hash_value,file_value));
+        files.push_back(std::make_pair(hash_value, file_value));
         return 1;
     }else{
         printf("Internal error\n");
+        return -1;
     }
 }
 
@@ -148,11 +160,6 @@ int ChordNode::listen_incoming_connections(){
      * Basically you setup a socket in the PORT_BASE + id port and wait. After receiving
      *	a message go to the switch clause and do what you need to do (implement the routing protocol)
      */
-    int sd,newsd,return_value;
-    int file,value;
-    struct sockaddr_in sa;
-    socklen_t len = sizeof(struct sockaddr_in);
-    char addrstr[INET_ADDRSTRLEN];
     char temp_buffer[50];
     char buffer[900];
     char buffer_answer[300];
@@ -162,28 +169,36 @@ int ChordNode::listen_incoming_connections(){
     ssize_t ret;
     Command answer;
 
+    /*
+        Open a server socket to listen incoming connections    
+    */
+    int sd;
     if ((sd=socket(PF_INET, SOCK_STREAM,0)) < 0){
         perror("socket");
         return 1;
     }
-
     int yes=1;
-    if (setsockopt(sd,SOL_SOCKET,SO_REUSEADDR, &yes, sizeof(int))==-1)
-        perror("setsockopt");
+    if (setsockopt(sd,SOL_SOCKET,SO_REUSEADDR, &yes, sizeof(int))==-1) perror("setsockopt");
 #ifdef DEBUG
     printf("Node: %d listening to port: %d\n",id,PORT_BASE+id);
 #endif
-try_again:
-    memset(&sa, 0, sizeof(sa));
-    sa.sin_family = AF_INET;
-    sa.sin_port = htons(PORT_BASE+id);
-    sa.sin_addr.s_addr = htonl(INADDR_ANY);
 
-    if (bind(sd, (struct sockaddr *)&sa, sizeof(sa)) < 0) {
-        usleep(800000);
-        perror("bind");
-        printf("port: %d\n",PORT_BASE+id);
-        goto try_again;
+
+    /* Try to bind into the port */
+    struct sockaddr_in sa;
+    socklen_t len = sizeof(struct sockaddr_in);
+    char addrstr[INET_ADDRSTRLEN];
+    while(true) {
+        memset(&sa, 0, sizeof(sa));
+        sa.sin_family = AF_INET;
+        sa.sin_port = htons(PORT_BASE+id);
+        sa.sin_addr.s_addr = htonl(INADDR_ANY);
+
+        if (bind(sd, (struct sockaddr *)&sa, sizeof(sa)) < 0) {
+            usleep(800000);
+            perror("bind");
+            printf("port: %d\n",PORT_BASE+id);
+        } else break;
     }
 
     if (listen(sd, TCP_BACKLOG) < 0){
@@ -191,10 +206,11 @@ try_again:
         return 1;
     }
 
+    /*
+        Loop forever serving requests
+    */
     while(1){
-        /*
-         * Iterate for ever accepting and answering until there is a DEPART request.
-         */
+        int newsd;
         if ((newsd = accept(sd, (struct sockaddr *)&sa, &len)) < 0){
             perror("accept");
             return 1;
@@ -234,6 +250,7 @@ try_again:
          */
         switch (answer.type){
             case INSERT_TYPE :
+            {
 #ifdef DEBUG
                 printf("Node: %d Type: %d Key: %s Value: %d Initial node: %d Initial node name:%s\n",id,answer->type,answer->key_and_value.first,answer->key_and_value.second,answer->initial_node,answer->initial_node_hostname);
 #endif
@@ -293,7 +310,9 @@ try_again:
                     }
                 }
                 break;
+            }
             case QUERY_TYPE :
+            {
 #ifdef DEBUG
                 printf("Node: %d Type: %d Key: %s Initial node: %d Initial node name:%s\n",id,answer->type,answer->key_and_value.first,answer->initial_node,answer->initial_node_hostname);
 #endif
@@ -356,10 +375,13 @@ try_again:
                     }
                 }
                 break;
+            }
             case DELETE_TYPE :
+            {
 #ifdef DEBUG
                 printf("Node: %d Type: %d Key: %s Initial node: %d Initial node name:%s\n",id,answer->type,answer->key_and_value.first,answer->initial_node,answer->initial_node_hostname);
 #endif
+                int value;
                 if (value = delete_file(answer)){
                     if (answer.initial_node != -1){
                         /*
@@ -418,7 +440,9 @@ try_again:
                     }
                 }
                 break;
+            }
             case QUERY_STAR :
+            {
 #ifdef DEBUG
                 printf("Node: %d Type: %d\n",id,answer->type);
 #endif
@@ -435,7 +459,9 @@ try_again:
                     perror("write");
 
                 break;
+            }
             case JOIN_TRANSFER :
+            {
 #ifdef DEBUG
                 printf("Node: %d Type: %d New node: %d New node name: %s\n",id,answer->type,answer->initial_node,answer->initial_node_hostname);
 #endif
@@ -473,13 +499,16 @@ try_again:
                 forward_message(buffer, answer.initial_node_hostname, PORT_BASE + answer.initial_node);
 
                 break;
+            }
             case JOIN_RECEIVE :
+            {
 #ifdef DEBUG
                 printf("Node: %d Type: %d Receiving those files: %s\n",id,answer->type,answer->files);
 #endif
                 /*
                  * Inserts all the new files. This is the first thing that a joining node executes!
                  */
+                int file, value;
                 if (answer.files == "") break;
                 strcpy(buffer, answer.files.c_str());
                 temp_string = strtok(buffer,"-");
@@ -493,7 +522,9 @@ try_again:
                 }
 
                 break;
+            }
             case DEPART_TRANSFER :
+            {
 #ifdef DEBUG
                 printf("Node: %d Type: %d Removing ths node.... :(\n",id,answer->type);
 #endif
@@ -512,7 +543,9 @@ try_again:
                 return 1;
 
                 break;
+            }
             case DEPART_RECEIVE :
+            {
 #ifdef DEBUG
                 printf("Node: %d Type: %d Receiving those files: %s\n",id,answer->type,answer->files);
 #endif
@@ -520,6 +553,8 @@ try_again:
                  * And here just insert everyting
                  */
                 if (answer.files == "") break;
+
+                int file, value;
                 strcpy(buffer,answer.files.c_str());
                 temp_string = strtok(buffer,"-");
                 while(temp_string != NULL){
@@ -531,6 +566,7 @@ try_again:
                 }
 
                 break;
+            }
         }
 
         if (close(newsd) < 0)
