@@ -160,13 +160,9 @@ int ChordNode::listen_incoming_connections(){
      * Basically you setup a socket in the PORT_BASE + id port and wait. After receiving
      *	a message go to the switch clause and do what you need to do (implement the routing protocol)
      */
-    char temp_buffer[50];
     char buffer[900];
     char buffer_answer[300];
-    char * temp_string;
-    std::vector<int> delete_vector;
-
-    ssize_t ret;
+    
     Command answer;
 
     /*
@@ -221,12 +217,12 @@ int ChordNode::listen_incoming_connections(){
             return 1;
         }
 
-        ret = read(newsd,buffer,sizeof(buffer)-1);
+        int ret = read(newsd,buffer,sizeof(buffer)-1);
         if (ret <= 0) continue;
         if (buffer[ret-1] == '\n') buffer[ret-1]='\0';
         else buffer[ret]= '\0';
 #ifdef DEBUG
-        printf("Node: %d Message: %s\n",id,buffer);
+        printf("Node: %d Message: %s\n", id, buffer);
 #endif
         answer = parse_the_command(buffer);
         if (answer.type == INSERT_TYPE && (answer.key_and_value.first == "" || answer.key_and_value.second == -1)) {
@@ -449,6 +445,7 @@ int ChordNode::listen_incoming_connections(){
                 /*
                  * Just put all your files in a buffer and send it
                  */
+                char temp_buffer[50];
                 sprintf(buffer,"Node %d files:\nFile Hash\tValue\n",id);
                 for(int i=0; i< files.size(); i++){
                     sprintf(temp_buffer,"%d\t\t%d\n",files.at(i).first,files.at(i).second);
@@ -465,7 +462,7 @@ int ChordNode::listen_incoming_connections(){
 #ifdef DEBUG
                 printf("Node: %d Type: %d New node: %d New node name: %s\n",id,answer->type,answer->initial_node,answer->initial_node_hostname);
 #endif
-                delete_vector.clear();
+                std::vector<int> delete_vector;
                 sprintf(buffer,"JOIN_RECEIVE,");
                 /*
                  * Two cases: For a node that is smaller than me but has to also take the file at the end of the ring
@@ -475,6 +472,7 @@ int ChordNode::listen_incoming_connections(){
 #ifdef DEBUG
                     printf("1st case\n");
 #endif
+                    char temp_buffer[50];
                     for (int i=0; i<files.size(); i++){
                         if (files.at(i).first < answer.initial_node || files.at(i).first > id) {
                             sprintf(temp_buffer,"%d-%d-",files.at(i).first,files.at(i).second);
@@ -482,10 +480,11 @@ int ChordNode::listen_incoming_connections(){
                             delete_vector.push_back(files.at(i).first);
                         }
                     }
-                }else{
+                } else {
 #ifdef DEBUG
                     printf("2nd case\n");
 #endif
+                    char temp_buffer[50];
                     for (int i=0; i<files.size(); i++){
                         if ((files.at(i).first > id)&&(files.at(i).first < answer.initial_node)){
                             printf("%d ",files.at(i).first);
@@ -509,6 +508,7 @@ int ChordNode::listen_incoming_connections(){
                  * Inserts all the new files. This is the first thing that a joining node executes!
                  */
                 int file, value;
+                char * temp_string;
                 if (answer.files == "") break;
                 strcpy(buffer, answer.files.c_str());
                 temp_string = strtok(buffer,"-");
@@ -531,6 +531,7 @@ int ChordNode::listen_incoming_connections(){
                 /*
                  * No cases here. Just send everything away.
                  */
+                char temp_buffer[50];
                 sprintf(buffer,"DEPART_RECEIVE,");
                 for (int i=0; i<files.size(); i++){
                     sprintf(temp_buffer,"%d-%d-",files.at(i).first,files.at(i).second);
@@ -555,6 +556,7 @@ int ChordNode::listen_incoming_connections(){
                 if (answer.files == "") break;
 
                 int file, value;
+                char * temp_string;
                 strcpy(buffer,answer.files.c_str());
                 temp_string = strtok(buffer,"-");
                 while(temp_string != NULL){
